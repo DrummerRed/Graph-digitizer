@@ -12,8 +12,14 @@ def image_error():
 def calibration_error():
     tk.messagebox.showwarning(title="Предупреждение", message="Перед добавлением точек откалибруйте оси!")
 
-def points_error():
+def points_absent_error():
+    tk.messagebox.showwarning(title="Предупреждение", message="Точки отсутствуют!")
+
+def points_save_error():
     tk.messagebox.showwarning(title="Предупреждение", message="Для сохранения графика необходимо указать минимум 2 точки!\nДобавьте точки!")
+
+def saved_graphs_error():
+    tk.messagebox.showwarning(title="Предупреждение", message="Не удается записать файл!\nОтсутствуют сохраненные графики!")
 
 
 class Graph_digitalizer():
@@ -24,6 +30,7 @@ class Graph_digitalizer():
         # self.text = ""
 
         self.finish_list = []                           # Список, который будет хранить все графики
+        self.names_list = []
         self.points = []
         self.graph_start_coordinats = None
         self.graph_x_max = None
@@ -187,7 +194,10 @@ class Graph_digitalizer():
         if (self.image_flag == False):
             image_error()
         
-        elif (len(self.points) != 0):
+        elif (len(self.points) == 0):
+            points_absent_error()
+
+        else:
             self.points.clear()
             status = f"Точек установлено: {len(self.points)}"
             self.set_status(status)
@@ -198,29 +208,57 @@ class Graph_digitalizer():
             image_error()
 
         elif (len(self.points) < 2):
-            points_error()
+            points_save_error()
 
         else:
-            self.finish_list.append(self.points)
-            self.points.clear()
-            status = "График сохранен"
-            self.set_status(status)
+            graph_name = simpledialog.askstring("Сохранение", "Вы можете задать имя графика.\n\n"
+                                                "Чтобы пропустить нажмите OK.", parent=self.root)
 
+            if (graph_name is not None):
+
+                if (graph_name == ""):
+                    self.names_list.append("No_name")
+
+                else:
+                    self.names_list.append(graph_name)
+
+                self.finish_list.append(self.points.copy())
+                self.points.clear()
+                status = "График сохранен"
+                self.set_status(status)
 
 
     def export_func(self):
         if (self.image_flag == False):
             image_error()
 
+        elif (len(self.finish_list) == 0):
+            saved_graphs_error()
+
+        else:
+            lenght = len(self.names_list)
+            file_name = simpledialog.askstring("Сохранение", "Введите имя файла без расширения!", parent=self.root)
+
+            if (file_name is not None) and (file_name != ""):
+                file_name += ".csv"
+                with open(file_name, "w", encoding="utf-8") as file:
+                    file.write("X,Y")
+                    for i in range(lenght):
+                        file.write(f"\nFile name: {self.names_list[i]}")
+                        lst = self.finish_list[i]
+                        for elem in lst:
+                            file.write(f"\n{elem[0]},{elem[1]}")
+                    status = f"Файл '{file_name}' сохранен"
+                    self.set_status(status)
+
 
     def initialization_points(self):                        # Инициализация значений координат нового файла(графика)
-        self.points = []
+        self.finish_list.clear()
+        self.names_list.clear()
+        self.points.clear()
         self.graph_start_coordinats = None
         self.graph_x_max = None
         self.graph_y_max = None
-
-
-    
 
 
     def set_status(self, text, color="black"):
