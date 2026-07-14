@@ -18,7 +18,7 @@ def points_absent_error():
 def points_save_error():
     tk.messagebox.showwarning(title="Предупреждение", message="Для сохранения графика необходимо указать минимум 2 точки!\nДобавьте точки!")
 
-def saved_graphs_error():
+def saved_graphs_error(button):
     tk.messagebox.showwarning(title="Предупреждение", message="Не удается записать файл!\nОтсутствуют сохраненные графики!")
 
 
@@ -27,7 +27,7 @@ class Graph_digitalizer():
         self.file_path = None                           # Путь до графика
         self.image_flag = False                         # Флаг, что график загружен
         self.calibration_flag = False                   # Флаг, что график откалиброван
-        # self.text = ""
+        self.file_record_flag = False                   # Флаг, что файл был записан
 
         self.finish_list = []                           # Список, который будет хранить все графики
         self.names_list = []
@@ -52,7 +52,8 @@ class Graph_digitalizer():
         calibration = tk.Button(btn_frame, text="Калибровка осей", command=self.calibration_func).pack(side='left')
         add_points = tk.Button(btn_frame, text="Добавить точки", command=self.add_points_func).pack(side='left')
         clear_points = tk.Button(btn_frame, text="Очистить точки", command=self.clear_points_func).pack(side='left')
-        save = tk.Button(btn_frame, text="Сохранить график", command=self.save_func).pack(side='left')
+        save_graph = tk.Button(btn_frame, text="Сохранить график", command=self.save_graph_func).pack(side='left')
+        # delete_graphs = tk.Button(btn_frame, text="Удалить графики",).pack(side='left')
         export = tk.Button(btn_frame, text="Экспортировать в файл", command=self.export_func).pack(side='left')
         exit = tk.Button(btn_frame, text="Выход", command=self.exit).pack(side='right')
 
@@ -87,6 +88,7 @@ class Graph_digitalizer():
             status = "Изображение загружено. Нажмите 'Калибровка осей'"
             self.set_status(status)
             self.initialization_points()                ##
+            self.file_record_flag = False                  
 
 
     def calibration_func(self):
@@ -155,6 +157,17 @@ class Graph_digitalizer():
             calibration_error()
 
         else:
+            if (self.file_record_flag == True):
+                self.file_record_flag = False                   # Сразу же обнуляю флаг
+                length = len(self.names_list)
+                result = messagebox.askyesno("Подтверждение",
+                     f"Некоторые графики были записаны в файл ранее ({length} граф.)\nЖелаете удалить их?",
+                     parent=self.root)
+                
+                if (result == True):
+                    self.finish_list.clear()
+                    self.names_list.clear()
+
             self.points.clear()
             # messagebox.showinfo("Добавление точек", 
             #     "Кликайте по точкам графика.\nНажмите Enter для завершения.
@@ -171,7 +184,7 @@ class Graph_digitalizer():
                 self.points.append(coordinates)
                 # print(i)
             # print(self.points)      ###
-            status = f"Точек установлено: {len(self.points)}"
+            status = f"Точек установлено: {len(self.points)}. Теперь вы можете сохранить график"
             self.set_status(status)
 
             # self.debugging_print()                # Отладочный принт
@@ -203,7 +216,7 @@ class Graph_digitalizer():
             self.set_status(status)
 
 
-    def save_func(self):
+    def save_graph_func(self):
         if (self.image_flag == False):
             image_error()
 
@@ -250,6 +263,7 @@ class Graph_digitalizer():
                             file.write(f"\n{elem[0]},{elem[1]}")
                     status = f"Файл '{file_name}' сохранен"
                     self.set_status(status)
+                    self.file_record_flag = True
 
 
     def initialization_points(self):                        # Инициализация значений координат нового файла(графика)
