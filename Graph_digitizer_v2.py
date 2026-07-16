@@ -55,7 +55,7 @@ class Graph_digitalizer():
         calibration = tk.Button(btn_frame, text="Калибровка осей", command=self.calibration_func).pack(side='left', padx=3)
         add_points = tk.Button(btn_frame, text="Добавить точки", command=self.add_points_func).pack(side='left', padx=3)
         # clear_points = tk.Button(btn_frame, text="Очистить точки", ).pack(side='left', padx=3)
-        save_graph = tk.Button(btn_frame, text="Сохранить график", ).pack(side='left', padx=3)
+        save_graph = tk.Button(btn_frame, text="Сохранить график", command=self.save_graph_func).pack(side='left', padx=3)
         self.preview_btn = tk.Button(btn_frame, text="👁 Предпросмотр", ).pack(side='left', padx=3)
         export = tk.Button(btn_frame, text="Экспортировать в файл", ).pack(side='left', padx=3)
         exit = tk.Button(btn_frame, text="Выход", command=self.exit).pack(side='right')
@@ -137,7 +137,7 @@ class Graph_digitalizer():
         graph_max_x = self.graph_x_max[0]
         graph_max_y = self.graph_y_max[1]
 
-        graph_len_x = graph_max_x - graph_min_x
+        graph_len_x = abs(graph_max_x - graph_min_x)
         graph_len_y = graph_max_y - graph_min_y
 
         real_len_x = self.real_x_max - self.real_x_min
@@ -173,12 +173,13 @@ class Graph_digitalizer():
             self.real_points.clear()
             self.pixel_points.clear()
             self.draw_points()
+            # self.draw_without_points()
 
             self.set_status("Добавляйте точки левой клавишей мыши")
-
-            self.id_press = self.canvas.mpl_connect('button_press_event', self.on_press)
-            # self.id_motion = self.canvas.mpl_connect('motion_notify_event', self.on_motion)
-            self.id_release = self.canvas.mpl_connect('button_release_event', self.on_release)
+            self.enable_clicks()
+            # self.id_press = self.canvas.mpl_connect('button_press_event', self.on_press)
+            # # self.id_motion = self.canvas.mpl_connect('motion_notify_event', self.on_motion)
+            # self.id_release = self.canvas.mpl_connect('button_release_event', self.on_release)
 
             
     def on_press(self, event):          # Обработка нажатия ПКМ
@@ -191,10 +192,16 @@ class Graph_digitalizer():
             return
         
         else:
+            index = self.find_nearest_point(px, py, max_dist=15)
+
             if event.button == 1:
                 self.pixel_points.append((px, py))
                 real_coordinates = self.conversion_coordinates((px, py))            # По идее эти 2 строки можно перенести в другой метод для ускорения программы
                 self.real_points.append(real_coordinates)
+
+            elif (event.button == 3):
+                if (index is not None):
+                    self.delete_point(index)
 
 
     def on_release(self, event):                # Обработка отжатия ПКМ
@@ -217,11 +224,82 @@ class Graph_digitalizer():
         self.canvas.draw()
 
 
-    # def redraw_points(self):
-    #     self.ax.clear()
-    #     self.ax.imshow(self.img)
-    #     self.ax.set_title(f"Точек: {len(self.real_points)} | ЛКМ — добавить/перетащить | ПКМ — удалить")
-    #     self.canvas.draw()
+    def draw_without_points(self):
+        self.ax.clear()
+        self.ax.imshow(self.img)
+        # self.ax.set_title(f"Точек: {len(self.real_points)} | ЛКМ — добавить/перетащить | ПКМ — удалить")
+        self.ax.set_title("")
+        self.canvas.draw()
+
+
+    def delete_point(self, index):
+        self.pixel_points.pop(index)
+        self.real_points.pop(index)
+        self.draw_points()
+
+
+    def find_nearest_point(self, px, py, max_dist=30):                      # Определение ближайшей точки
+        if (len(self.pixel_points) == 0):                                   # Возвращает None, когда точка не определена
+            return None                                                     # иначе возвращает индекс найденной точки
+        
+        else:
+            min_dist = float('inf')                                 # Задал исходное знач как бесконечность
+            index = None
+
+            for i, (x, y) in enumerate(self.pixel_points):
+                dist = ((px - x) ** 2 + (py - y) ** 2) ** 0.5
+
+                if (dist < min_dist):
+                    min_dist = dist
+                    index = i
+
+            if (min_dist < max_dist):               # По идее можно упростить
+                return index
+
+            else:                           
+                return None
+
+
+    def save_graph_func(self):                                      # Сохранение графика
+        if (self.image_flag == False):
+            image_error()
+
+        elif (len(self.real_points) < 2):
+            points_save_error()
+
+        else:
+            graph_name = simpledialog.askstring("Сохранение", "Вы можете задать имя графика.\n\n"
+                                                "Чтобы пропустить нажмите OK.", parent=self.root)
+            if (graph_name is not None):
+
+                if (graph_name == ""):
+                    self.names_list.append("No_name")
+
+                else:
+                    self.names_list.append(graph_name)
+
+                # self.debugging_print()          ###
+                self.finish_list.append(self.real_points.copy())
+                self.real_points.clear()
+                self.pixel_points.clear()
+                status = "График сохранен"
+                self.set_status(status)
+                self.draw_without_points()
+                self.disable_clicks()
+
+
+    def debugging_print(self):
+        x = []
+        y = []
+        for i in self.real_points:
+            x.append(i[0])
+            y.append(i[1])
+
+        plt.figure()
+        plt.plot(x, y, marker='o')
+        plt.grid(True)
+        plt.show()
+
 
     def initialization_points(self):                        # Инициализация значений координат нового файла(графика)
         self.finish_list.clear()
@@ -231,6 +309,18 @@ class Graph_digitalizer():
         self.graph_start_coordinats = None
         self.graph_x_max = None
         self.graph_y_max = None
+
+
+    def enable_clicks(self):                                # Включаем режим считывания кликов
+        self.id_press = self.canvas.mpl_connect('button_press_event', self.on_press)
+        # self.id_motion = self.canvas.mpl_connect('motion_notify_event', self.on_motion)
+        self.id_release = self.canvas.mpl_connect('button_release_event', self.on_release)
+
+
+    def disable_clicks(self):                               # Отключаем режим считывания кликов
+        self.canvas.mpl_disconnect(self.id_press)
+        # self.canvas.mpl_disconnect(self.id_motion)
+        self.canvas.mpl_disconnect(self.id_release)
 
 
     def set_status(self, text, color="black"):
