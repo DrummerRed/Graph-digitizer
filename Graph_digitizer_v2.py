@@ -4,7 +4,6 @@ import sys
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-import numpy as np
 
 def image_error():
     tk.messagebox.showwarning(title="Предупреждение", message="Необходимо загрузить изображение!")
@@ -18,20 +17,24 @@ def points_absent_error():
 def points_save_error():
     tk.messagebox.showwarning(title="Предупреждение", message="Для сохранения графика необходимо указать минимум 2 точки!\nДобавьте точки!")
 
-def saved_graphs_error():
+def saved_graphs_error(button):
     tk.messagebox.showwarning(title="Предупреждение", message="Не удается записать файл!\nОтсутствуют сохраненные графики!")
 
 
 class Graph_digitalizer():
     def __init__(self):
         self.file_path = None                           # Путь до графика
+
         self.image_flag = False                         # Флаг, что график загружен
         self.calibration_flag = False                   # Флаг, что график откалиброван
+        self.add_points_flag = False ####                   # Флаг, что кнопка добавления точек нажата
         self.file_record_flag = False                   # Флаг, что файл был записан
 
         self.finish_list = []                           # Список, который будет хранить все графики
         self.names_list = []
-        self.points = []
+        self.real_points = []
+        self.pixel_points = []
+
         self.graph_start_coordinats = None
         self.graph_x_max = None
         self.graph_y_max = None
@@ -48,13 +51,13 @@ class Graph_digitalizer():
         btn_frame = tk.Frame(self.root)
         btn_frame.pack(fill='x', padx=0, pady=5)       # Настройка размера рамки кнопок
 
-        open_file = tk.Button(btn_frame, text="Открыть изображение", command=self.open_file_func).pack(side='left')
-        calibration = tk.Button(btn_frame, text="Калибровка осей", command=self.calibration_func).pack(side='left')
-        add_points = tk.Button(btn_frame, text="Добавить точки", command=self.add_points_func).pack(side='left')
-        clear_points = tk.Button(btn_frame, text="Очистить точки", command=self.clear_points_func).pack(side='left')
-        save_graph = tk.Button(btn_frame, text="Сохранить график", command=self.save_graph_func).pack(side='left')
-        # delete_graphs = tk.Button(btn_frame, text="Удалить графики",).pack(side='left')
-        export = tk.Button(btn_frame, text="Экспортировать в файл", command=self.export_func).pack(side='left')
+        open_file = tk.Button(btn_frame, text="Открыть изображение", command=self.open_file_func).pack(side='left', padx=3)
+        calibration = tk.Button(btn_frame, text="Калибровка осей", command=self.calibration_func).pack(side='left', padx=3)
+        add_points = tk.Button(btn_frame, text="Добавить точки", command=self.add_points_func).pack(side='left', padx=3)
+        # clear_points = tk.Button(btn_frame, text="Очистить точки", ).pack(side='left', padx=3)
+        save_graph = tk.Button(btn_frame, text="Сохранить график", ).pack(side='left', padx=3)
+        self.preview_btn = tk.Button(btn_frame, text="👁 Предпросмотр", ).pack(side='left', padx=3)
+        export = tk.Button(btn_frame, text="Экспортировать в файл", ).pack(side='left', padx=3)
         exit = tk.Button(btn_frame, text="Выход", command=self.exit).pack(side='right')
 
         self.status_text = tk.Label(
@@ -69,7 +72,7 @@ class Graph_digitalizer():
         # plt.title("Для начала работы откройте изображение графика\n\n")
         self.canvas = FigureCanvasTkAgg(self.fig, master=self.root)               # Convert the Figure to a tkinter widget
         self.canvas.get_tk_widget().pack()                                   # Show the widget on the screen
-        self.canvas.draw()                                                   # Draw the graph on the canvas?
+        self.canvas.draw() 
 
 
     def open_file_func(self):
@@ -88,7 +91,7 @@ class Graph_digitalizer():
             status = "Изображение загружено. Нажмите 'Калибровка осей'"
             self.set_status(status)
             self.initialization_points()                ##
-            self.file_record_flag = False                  
+            self.file_record_flag = False
 
 
     def calibration_func(self):
@@ -106,7 +109,6 @@ class Graph_digitalizer():
             status = "Установите точку начала координат"
             self.set_status(status)
             self.graph_start_coordinats = plt.ginput(n=1, timeout=0, show_clicks=True)[0]
-            # print(self.graph_start_coordinats)
 
             status = "Установите точку максимума оси X"
             self.set_status(status)
@@ -129,7 +131,7 @@ class Graph_digitalizer():
             self.calibration_flag = True
 
 
-    def conversation_coordinates(self, point):                          # Пока что будет работать только для графиков, где оси XY расположены геометрически верно
+    def conversion_coordinates(self, point):                          # Пока что будет работать только для графиков, где оси XY расположены геометрически верно
         graph_min_x = self.graph_start_coordinats[0]
         graph_min_y = self.graph_start_coordinats[1]
         graph_max_x = self.graph_x_max[0]
@@ -168,108 +170,64 @@ class Graph_digitalizer():
                     self.finish_list.clear()
                     self.names_list.clear()
 
-            self.points.clear()
-            # messagebox.showinfo("Добавление точек", 
-            #     "Кликайте по точкам графика.\nНажмите Enter для завершения.
-            # \n"\      Можно дописать про ПКМ
-                    # "Помните, что чем больше точек, тем выше точность графика")
+            self.real_points.clear()
+            self.pixel_points.clear()
+            self.draw_points()
 
-            status = "Кликайте по точкам графика. Для завершения нажмите Enter."
-            self.set_status(status)
+            self.set_status("Добавляйте точки левой клавишей мыши")
 
-            lst = plt.ginput(n=-1, timeout=0, show_clicks=True)
-            # print(lst)          ###
-            for i in lst:
-                coordinates = self.conversation_coordinates(i)
-                self.points.append(coordinates)
-                # print(i)
-            # print(self.points)      ###
-            status = f"Точек установлено: {len(self.points)}. Теперь вы можете сохранить график"
-            self.set_status(status)
+            self.id_press = self.canvas.mpl_connect('button_press_event', self.on_press)
+            # self.id_motion = self.canvas.mpl_connect('motion_notify_event', self.on_motion)
+            self.id_release = self.canvas.mpl_connect('button_release_event', self.on_release)
 
-            # self.debugging_print()                # Отладочный принт
+            
+    def on_press(self, event):          # Обработка нажатия ПКМ
+        if not event.inaxes:            # Курсор вне поля графика
+            return
+        
+        px, py = event.xdata, event.ydata
+
+        if px is None or py is None:
+            return
+        
+        else:
+            if event.button == 1:
+                self.pixel_points.append((px, py))
+                real_coordinates = self.conversion_coordinates((px, py))            # По идее эти 2 строки можно перенести в другой метод для ускорения программы
+                self.real_points.append(real_coordinates)
 
 
-    def debugging_print(self):
+    def on_release(self, event):                # Обработка отжатия ПКМ
+        self.draw_points()
+
+
+    def draw_points(self):
+        self.ax.clear()
+        self.ax.imshow(self.img)
+
         x = []
         y = []
-        for i in self.points:
+        for i in self.pixel_points:
             x.append(i[0])
             y.append(i[1])
 
-        plt.figure()
-        plt.plot(x, y, marker='o')
-        plt.grid(True)
-        plt.show()
+        self.ax.plot(x, y, 'ro', markersize=8, markeredgecolor='black')         ###
+
+        self.ax.set_title(f"Точек: {len(self.real_points)} | ЛКМ — добавить/перетащить | ПКМ — удалить")
+        self.canvas.draw()
 
 
-    def clear_points_func(self):
-        if (self.image_flag == False):
-            image_error()
-        
-        elif (len(self.points) == 0):
-            points_absent_error()
-
-        else:
-            self.points.clear()
-            status = f"Точек установлено: {len(self.points)}"
-            self.set_status(status)
-
-
-    def save_graph_func(self):
-        if (self.image_flag == False):
-            image_error()
-
-        elif (len(self.points) < 2):
-            points_save_error()
-
-        else:
-            graph_name = simpledialog.askstring("Сохранение", "Вы можете задать имя графика.\n\n"
-                                                "Чтобы пропустить нажмите OK.", parent=self.root)
-
-            if (graph_name is not None):
-
-                if (graph_name == ""):
-                    self.names_list.append("No_name")
-
-                else:
-                    self.names_list.append(graph_name)
-
-                self.finish_list.append(self.points.copy())
-                self.points.clear()
-                status = "График сохранен"
-                self.set_status(status)
-
-
-    def export_func(self):
-        if (self.image_flag == False):
-            image_error()
-
-        elif (len(self.finish_list) == 0):
-            saved_graphs_error()
-
-        else:
-            lenght = len(self.names_list)
-            file_name = simpledialog.askstring("Сохранение", "Введите имя файла без расширения!", parent=self.root)
-
-            if (file_name is not None) and (file_name != ""):
-                file_name += ".csv"
-                with open(file_name, "w", encoding="utf-8") as file:
-                    file.write("X,Y")
-                    for i in range(lenght):
-                        file.write(f"\nFile name: {self.names_list[i]}")
-                        lst = self.finish_list[i]
-                        for elem in lst:
-                            file.write(f"\n{elem[0]},{elem[1]}")
-                    status = f"Файл '{file_name}' сохранен"
-                    self.set_status(status)
-                    self.file_record_flag = True
-
+    # def redraw_points(self):
+    #     self.ax.clear()
+    #     self.ax.imshow(self.img)
+    #     self.ax.set_title(f"Точек: {len(self.real_points)} | ЛКМ — добавить/перетащить | ПКМ — удалить")
+    #     self.canvas.draw()
 
     def initialization_points(self):                        # Инициализация значений координат нового файла(графика)
         self.finish_list.clear()
         self.names_list.clear()
-        self.points.clear()
+        self.real_points.clear()
+        self.pixel_points.clear()
         self.graph_start_coordinats = None
         self.graph_x_max = None
         self.graph_y_max = None
