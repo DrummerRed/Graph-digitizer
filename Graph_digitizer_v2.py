@@ -35,6 +35,7 @@ class Graph_digitalizer():
         self.real_points = []
         self.pixel_points = []
 
+        self.move_index = None
         self.graph_start_coordinats = None
         self.graph_x_max = None
         self.graph_y_max = None
@@ -137,7 +138,7 @@ class Graph_digitalizer():
         graph_max_x = self.graph_x_max[0]
         graph_max_y = self.graph_y_max[1]
 
-        graph_len_x = abs(graph_max_x - graph_min_x)
+        graph_len_x = abs(graph_max_x - graph_min_x)            ###
         graph_len_y = graph_max_y - graph_min_y
 
         real_len_x = self.real_x_max - self.real_x_min
@@ -182,8 +183,8 @@ class Graph_digitalizer():
             # self.id_release = self.canvas.mpl_connect('button_release_event', self.on_release)
 
             
-    def on_press(self, event):          # Обработка нажатия ПКМ
-        if not event.inaxes:            # Курсор вне поля графика
+    def on_press(self, event):          # Обработка нажатия мыши
+        if (not event.inaxes):            # Курсор вне поля графика
             return
         
         px, py = event.xdata, event.ydata
@@ -192,19 +193,41 @@ class Graph_digitalizer():
             return
         
         else:
-            index = self.find_nearest_point(px, py, max_dist=15)
+            index = self.find_nearest_point(px, py, max_dist=15)            # Определяем ближайшую точку (если есть)
 
-            if event.button == 1:
-                self.pixel_points.append((px, py))
-                real_coordinates = self.conversion_coordinates((px, py))            # По идее эти 2 строки можно перенести в другой метод для ускорения программы
-                self.real_points.append(real_coordinates)
+            if (event.button == 1):                 # ЛКМ
+                if (index is None):
+                    self.pixel_points.append((px, py))
+                    real_coordinates = self.conversion_coordinates((px, py))   # По идее эти 2 строки можно перенести в другой метод для ускорения программы
+                    self.real_points.append(real_coordinates)
 
-            elif (event.button == 3):
+                else:
+                    self.move_index = index
+
+            elif (event.button == 3):               # ПКМ
                 if (index is not None):
                     self.delete_point(index)
 
 
+    def on_motion(self, event):
+        if (not event.inaxes) or (self.move_index is None):            # Курсор вне поля графика
+            return
+
+        px, py = event.xdata, event.ydata
+
+        if px is None or py is None:
+            return
+        
+        else:
+            i = self.move_index
+            self.pixel_points[i] = (px, py)
+            real_coordinates = self.conversion_coordinates((px, py))
+            self.real_points[i] = real_coordinates
+            self.draw_points()
+        
+
     def on_release(self, event):                # Обработка отжатия ПКМ
+        self.move_index = None
         self.draw_points()
 
 
@@ -313,13 +336,13 @@ class Graph_digitalizer():
 
     def enable_clicks(self):                                # Включаем режим считывания кликов
         self.id_press = self.canvas.mpl_connect('button_press_event', self.on_press)
-        # self.id_motion = self.canvas.mpl_connect('motion_notify_event', self.on_motion)
+        self.id_motion = self.canvas.mpl_connect('motion_notify_event', self.on_motion)
         self.id_release = self.canvas.mpl_connect('button_release_event', self.on_release)
 
 
     def disable_clicks(self):                               # Отключаем режим считывания кликов
         self.canvas.mpl_disconnect(self.id_press)
-        # self.canvas.mpl_disconnect(self.id_motion)
+        self.canvas.mpl_disconnect(self.id_motion)
         self.canvas.mpl_disconnect(self.id_release)
 
 
