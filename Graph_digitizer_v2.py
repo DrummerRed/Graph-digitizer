@@ -11,8 +11,8 @@ def image_error():
 def calibration_error():
     tk.messagebox.showwarning(title="Предупреждение", message="Перед добавлением точек откалибруйте оси!")
 
-def points_absent_error():
-    tk.messagebox.showwarning(title="Предупреждение", message="Точки отсутствуют!")
+def preview_error():
+    tk.messagebox.showwarning(title="Предупреждение", message="Нужно минимум 2 точки для предпросмотра!")
 
 def points_save_error():
     tk.messagebox.showwarning(title="Предупреждение", message="Для сохранения графика необходимо указать минимум 2 точки!\nДобавьте точки!")
@@ -25,10 +25,11 @@ class Graph_digitalizer():
     def __init__(self):
         self.file_path = None                           # Путь до графика
 
-        self.image_flag = False                         # Флаг, что график загружен
-        self.calibration_flag = False                   # Флаг, что график откалиброван
-        self.add_points_flag = False                    # Флаг, что кнопка добавления точек нажата
-        self.file_record_flag = False                   # Флаг, что файл был записан
+        self.image_flag = False                         # Флаг, указывающий, что график загружен
+        self.calibration_flag = False                   # Флаг, указывающий, что график откалиброван
+        self.add_points_flag = False                    # Флаг, указывающий, что кнопка добавления точек нажата
+        self.file_record_flag = False                   # Флаг, указывающий, что файл был записан
+        self.preview_on = False                         # Флаг, указывающий, что кнопка предпросмотра нажата
 
         self.names_axes = []                            # Список, хранящий названия осей
         self.finish_list = []                           # Список, который будет хранить все графики
@@ -59,7 +60,8 @@ class Graph_digitalizer():
         add_points = tk.Button(btn_frame, text="Добавить точки", command=self.add_points_func).pack(side='left', padx=3)
         # clear_points = tk.Button(btn_frame, text="Очистить точки", ).pack(side='left', padx=3)
         save_graph = tk.Button(btn_frame, text="Сохранить график", command=self.save_graph_func).pack(side='left', padx=3)
-        self.preview_btn = tk.Button(btn_frame, text="👁 Предпросмотр", ).pack(side='left', padx=3)
+        self.preview = tk.Button(btn_frame, text="Предпросмотр", command=self.preview_func)
+        self.preview.pack(side='left', padx=3)
         export = tk.Button(btn_frame, text="Экспортировать в файл", command=self.export_func).pack(side='left', padx=3)
         exit = tk.Button(btn_frame, text="Выход", command=self.exit).pack(side='right')
 
@@ -246,6 +248,16 @@ class Graph_digitalizer():
 
         self.ax.plot(x, y, 'ro', markersize=8, markeredgecolor='black')         ###
 
+        if (self.preview_on == True):
+            sort_list = self.pixel_points.copy()
+            sort_list = sorted(sort_list, key=lambda p: p[0])
+            sort_x, sort_y = [], []
+            for i in sort_list:
+               sort_x.append(i[0])
+               sort_y.append(i[1])
+            self.ax.plot(sort_x, sort_y, '-', color='cyan', linewidth=2, label="Предпросмотр")
+            self.ax.legend(loc='upper right', fontsize=9) 
+
         self.ax.set_title(f"Точек: {len(self.real_points)} | ЛКМ — добавить/перетащить | ПКМ — удалить")
         self.canvas.draw()
 
@@ -311,6 +323,7 @@ class Graph_digitalizer():
                 self.pixel_points.clear()
                 status = "График сохранен"
                 self.set_status(status)
+                self.reset_preview()
                 self.draw_without_points()
                 self.disable_clicks()
 
@@ -399,6 +412,28 @@ class Graph_digitalizer():
             parameter = None
         self.parameters_list.append(parameter)
         
+
+    def preview_func(self):                           # Режим кнопки предпросмотра
+        if (self.image_flag == False):
+            image_error()
+
+        elif (len(self.pixel_points) < 2):
+            preview_error()
+
+        else:
+            if (self.preview_on == False):
+                self.preview_on = True
+                self.preview.config(text="Скрыть линию", relief=tk.SUNKEN)
+                self.draw_points()
+
+            else:
+                self.reset_preview()
+                self.draw_points()
+
+
+    def reset_preview(self):                        # Возврат отжатия кнопки
+        self.preview_on = False
+        self.preview.config(text="Предпросмотр", relief=tk.RAISED)
 
 
     def set_status(self, text, color="black"):
