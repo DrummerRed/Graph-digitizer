@@ -32,6 +32,7 @@ class Graph_digitalizer():
 
         self.names_axes = []                            # Список, хранящий названия осей
         self.finish_list = []                           # Список, который будет хранить все графики
+        self.parameters_list = []                       # Список, содержит параметр каждого графика
         self.names_list = []
         self.real_points = []
         self.pixel_points = []
@@ -174,6 +175,7 @@ class Graph_digitalizer():
                 if (result == True):
                     self.finish_list.clear()
                     self.names_list.clear()
+                    self.parameters_list.clear()
 
             self.real_points.clear()
             self.pixel_points.clear()
@@ -292,6 +294,7 @@ class Graph_digitalizer():
             points_save_error()
 
         else:
+            self.set_parameter()
             graph_name = simpledialog.askstring("Сохранение", "Вы можете задать имя графика.\n\n"
                                                 "Чтобы пропустить нажмите OK.", parent=self.root)
             if (graph_name is not None):
@@ -329,6 +332,7 @@ class Graph_digitalizer():
                     file.write(f"{self.names_axes[0]},{self.names_axes[1]}")
                     for i in range(lenght):
                         file.write(f"\nFile name: {self.names_list[i]}")
+                        file.write(f"\nParameter: {self.parameters_list[i]}")
                         lst = self.finish_list[i]
                         for elem in lst:
                             file.write(f"\n{elem[0]},{elem[1]}")
@@ -353,6 +357,7 @@ class Graph_digitalizer():
     def initialization_points(self):                        # Инициализация значений координат нового файла(графика)
         self.finish_list.clear()
         self.names_list.clear()
+        self.parameters_list.clear()
         self.real_points.clear()
         self.pixel_points.clear()
         self.graph_start_coordinats = None
@@ -385,6 +390,15 @@ class Graph_digitalizer():
         if y_name == "":
             y_name = "Y"
         self.names_axes = [x_name, y_name]
+
+    
+    def set_parameter(self):
+        parameter = simpledialog.askstring("Сохранение", "Укажите значение доп. параметра\n"
+                                                "(при его отсутствии оставьте пустым)", parent=self.root)
+        if parameter == "":
+            parameter = None
+        self.parameters_list.append(parameter)
+        
 
 
     def set_status(self, text, color="black"):
