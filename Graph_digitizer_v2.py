@@ -17,7 +17,7 @@ def points_absent_error():
 def points_save_error():
     tk.messagebox.showwarning(title="Предупреждение", message="Для сохранения графика необходимо указать минимум 2 точки!\nДобавьте точки!")
 
-def saved_graphs_error(button):
+def saved_graphs_error():
     tk.messagebox.showwarning(title="Предупреждение", message="Не удается записать файл!\nОтсутствуют сохраненные графики!")
 
 
@@ -27,9 +27,10 @@ class Graph_digitalizer():
 
         self.image_flag = False                         # Флаг, что график загружен
         self.calibration_flag = False                   # Флаг, что график откалиброван
-        self.add_points_flag = False ####                   # Флаг, что кнопка добавления точек нажата
+        self.add_points_flag = False                    # Флаг, что кнопка добавления точек нажата
         self.file_record_flag = False                   # Флаг, что файл был записан
 
+        self.names_axes = []                            # Список, хранящий названия осей
         self.finish_list = []                           # Список, который будет хранить все графики
         self.names_list = []
         self.real_points = []
@@ -58,7 +59,7 @@ class Graph_digitalizer():
         # clear_points = tk.Button(btn_frame, text="Очистить точки", ).pack(side='left', padx=3)
         save_graph = tk.Button(btn_frame, text="Сохранить график", command=self.save_graph_func).pack(side='left', padx=3)
         self.preview_btn = tk.Button(btn_frame, text="👁 Предпросмотр", ).pack(side='left', padx=3)
-        export = tk.Button(btn_frame, text="Экспортировать в файл", ).pack(side='left', padx=3)
+        export = tk.Button(btn_frame, text="Экспортировать в файл", command=self.export_func).pack(side='left', padx=3)
         exit = tk.Button(btn_frame, text="Выход", command=self.exit).pack(side='right')
 
         self.status_text = tk.Label(
@@ -92,6 +93,7 @@ class Graph_digitalizer():
             status = "Изображение загружено. Нажмите 'Калибровка осей'"
             self.set_status(status)
             self.initialization_points()                ##
+            self.set_axes_names()
             self.file_record_flag = False
 
 
@@ -101,6 +103,8 @@ class Graph_digitalizer():
             image_error()
         
         else:
+            self.disable_clicks()
+            self.draw_without_points()
             messagebox.showinfo("Калибровка", 
                 "Сейчас необходимо кликнуть 3 точки на графике:\n\n"
                 "1. Точка начала координат\n"
@@ -178,9 +182,6 @@ class Graph_digitalizer():
 
             self.set_status("Добавляйте точки левой клавишей мыши")
             self.enable_clicks()
-            # self.id_press = self.canvas.mpl_connect('button_press_event', self.on_press)
-            # # self.id_motion = self.canvas.mpl_connect('motion_notify_event', self.on_motion)
-            # self.id_release = self.canvas.mpl_connect('button_release_event', self.on_release)
 
             
     def on_press(self, event):          # Обработка нажатия мыши
@@ -311,6 +312,31 @@ class Graph_digitalizer():
                 self.disable_clicks()
 
 
+    def export_func(self):
+        if (self.image_flag == False):
+            image_error()
+
+        elif (len(self.finish_list) == 0):
+            saved_graphs_error()
+
+        else:
+            lenght = len(self.names_list)
+            file_name = simpledialog.askstring("Сохранение", "Введите имя файла без расширения!", parent=self.root)
+
+            if (file_name is not None) and (file_name != ""):
+                file_name += ".csv"
+                with open(file_name, "w", encoding="utf-8") as file:
+                    file.write(f"{self.names_axes[0]},{self.names_axes[1]}")
+                    for i in range(lenght):
+                        file.write(f"\nFile name: {self.names_list[i]}")
+                        lst = self.finish_list[i]
+                        for elem in lst:
+                            file.write(f"\n{elem[0]},{elem[1]}")
+                    status = f"Файл '{file_name}' сохранен"
+                    self.set_status(status)
+                    self.file_record_flag = True
+
+
     def debugging_print(self):
         x = []
         y = []
@@ -338,12 +364,27 @@ class Graph_digitalizer():
         self.id_press = self.canvas.mpl_connect('button_press_event', self.on_press)
         self.id_motion = self.canvas.mpl_connect('motion_notify_event', self.on_motion)
         self.id_release = self.canvas.mpl_connect('button_release_event', self.on_release)
+        self.add_points_flag = True
 
 
     def disable_clicks(self):                               # Отключаем режим считывания кликов
-        self.canvas.mpl_disconnect(self.id_press)
-        self.canvas.mpl_disconnect(self.id_motion)
-        self.canvas.mpl_disconnect(self.id_release)
+        if (self.add_points_flag):
+            self.canvas.mpl_disconnect(self.id_press)
+            self.canvas.mpl_disconnect(self.id_motion)
+            self.canvas.mpl_disconnect(self.id_release)
+            self.add_points_flag = False
+
+
+    def set_axes_names(self):
+        x_name = simpledialog.askstring("Оси", "Название оси X:\n(при отсутствии оставьте пустым)", parent=self.root)
+        y_name = simpledialog.askstring("Оси", "Название оси Y:\n(при отсутствии оставьте пустым)", parent=self.root)
+
+        if x_name == "":
+            x_name = "X"
+
+        if y_name == "":
+            y_name = "Y"
+        self.names_axes = [x_name, y_name]
 
 
     def set_status(self, text, color="black"):
