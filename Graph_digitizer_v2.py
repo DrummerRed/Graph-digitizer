@@ -2,7 +2,6 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, simpledialog
 import sys
 import matplotlib.pyplot as plt
-import matplotlib.image as mpimg
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 def image_error():
@@ -21,7 +20,7 @@ def saved_graphs_error():
     tk.messagebox.showwarning(title="Предупреждение", message="Не удается записать файл!\nОтсутствуют сохраненные графики!")
 
 
-class Graph_digitalizer():
+class Graph_digitizer():
     def __init__(self):
         self.file_path = None                           # Путь до графика
 
@@ -34,11 +33,11 @@ class Graph_digitalizer():
         self.names_axes = []                            # Список, хранящий названия осей
         self.finish_list = []                           # Список, который будет хранить все графики
         self.parameters_list = []                       # Список, содержит параметр каждого графика
-        self.names_list = []
-        self.real_points = []
-        self.pixel_points = []
+        self.names_list = []                            # Список, содержащий названия графиков
+        self.real_points = []                           # Список, содержащий координаты реальных точек
+        self.pixel_points = []                          # Список, содержищий координаты пиксельных точек 
 
-        self.move_index = None
+        self.move_index = None                          # Флаг перемещения точки
         self.graph_start_coordinats = None
         self.graph_x_max = None
         self.graph_y_max = None
@@ -74,13 +73,12 @@ class Graph_digitalizer():
         self.status_text.pack(pady=5)
 
         self.fig, self.ax = plt.subplots(figsize=(16,12))
-        # plt.title("Для начала работы откройте изображение графика\n\n")
-        self.canvas = FigureCanvasTkAgg(self.fig, master=self.root)               # Convert the Figure to a tkinter widget
-        self.canvas.get_tk_widget().pack()                                   # Show the widget on the screen
+        self.canvas = FigureCanvasTkAgg(self.fig, master=self.root)               # Преобразование matplotlib объекта в виджет tkinter
+        self.canvas.get_tk_widget().pack()                                   # Отображение в окне
         self.canvas.draw() 
 
 
-    def open_file_func(self):
+    def open_file_func(self):                                           # Загрузка изображения
         file_types = [("Images", "*.png *.jpg *.jpeg")]
         self.file_path = filedialog.askopenfilename(filetypes=file_types)
 
@@ -89,19 +87,17 @@ class Graph_digitalizer():
             self.calibration_flag = False
             self.img = plt.imread(self.file_path)
             self.ax.clear()
-            self.ax.imshow(self.img)                        # Показать график
-            # self.ax.set_title("Изображение загружено. Нажмите 'Калибровка осей'\n\n")
+            self.ax.imshow(self.img)                        # Позволяет показать график
             self.canvas.draw()
             
             status = "Изображение загружено. Нажмите 'Калибровка осей'"
             self.set_status(status)
-            self.initialization_points()                ##
+            self.initialization_points()                
             self.set_axes_names()
             self.file_record_flag = False
 
 
-    def calibration_func(self):
-        # self.calibration_flag = False
+    def calibration_func(self):                         # Калибровка осей
         if (self.image_flag == False):
             image_error()
         
@@ -139,13 +135,13 @@ class Graph_digitalizer():
             self.calibration_flag = True
 
 
-    def conversion_coordinates(self, point):                          # Пока что будет работать только для графиков, где оси XY расположены геометрически верно
+    def conversion_coordinates(self, point):                          # Преобразование координат
         graph_min_x = self.graph_start_coordinats[0]
         graph_min_y = self.graph_start_coordinats[1]
         graph_max_x = self.graph_x_max[0]
         graph_max_y = self.graph_y_max[1]
 
-        graph_len_x = abs(graph_max_x - graph_min_x)            ###
+        graph_len_x = graph_max_x - graph_min_x           
         graph_len_y = graph_max_y - graph_min_y
 
         real_len_x = self.real_x_max - self.real_x_min
@@ -154,8 +150,8 @@ class Graph_digitalizer():
         x_val = point[0]
         y_val = point[1]
 
-        x = (x_val - graph_min_x) * real_len_x / graph_len_x
-        y = (y_val - graph_min_y) * real_len_y / graph_len_y
+        x = self.real_x_min + (x_val - graph_min_x) * real_len_x / graph_len_x
+        y = self.real_y_min + (y_val - graph_min_y) * real_len_y / graph_len_y
         return (x, y)
 
 
@@ -168,7 +164,7 @@ class Graph_digitalizer():
 
         else:
             if (self.file_record_flag == True):
-                self.file_record_flag = False                   # Сразу же обнуляю флаг
+                self.file_record_flag = False                           # Сразу же обнуляю флаг
                 length = len(self.names_list)
                 result = messagebox.askyesno("Подтверждение",
                      f"Некоторые графики были записаны в файл ранее ({length} граф.)\nЖелаете удалить их?",
@@ -236,7 +232,7 @@ class Graph_digitalizer():
         self.draw_points()
 
 
-    def draw_points(self):
+    def draw_points(self):                      # Отрисовка точек
         self.ax.clear()
         self.ax.imshow(self.img)
 
@@ -262,10 +258,9 @@ class Graph_digitalizer():
         self.canvas.draw()
 
 
-    def draw_without_points(self):
+    def draw_without_points(self):                      # Отрисовка только рисунка
         self.ax.clear()
         self.ax.imshow(self.img)
-        # self.ax.set_title(f"Точек: {len(self.real_points)} | ЛКМ — добавить/перетащить | ПКМ — удалить")
         self.ax.set_title("")
         self.canvas.draw()
 
@@ -328,7 +323,7 @@ class Graph_digitalizer():
                 self.disable_clicks()
 
 
-    def export_func(self):
+    def export_func(self):                                  # Запись информации в файл
         if (self.image_flag == False):
             image_error()
 
@@ -393,7 +388,7 @@ class Graph_digitalizer():
             self.add_points_flag = False
 
 
-    def set_axes_names(self):
+    def set_axes_names(self):                               # Запрос имени координатных осей 
         x_name = simpledialog.askstring("Оси", "Название оси X:\n(при отсутствии оставьте пустым)", parent=self.root)
         y_name = simpledialog.askstring("Оси", "Название оси Y:\n(при отсутствии оставьте пустым)", parent=self.root)
 
@@ -405,7 +400,7 @@ class Graph_digitalizer():
         self.names_axes = [x_name, y_name]
 
     
-    def set_parameter(self):
+    def set_parameter(self):                                # Запрос значения доп параметра
         parameter = simpledialog.askstring("Сохранение", "Укажите значение доп. параметра\n"
                                                 "(при его отсутствии оставьте пустым)", parent=self.root)
         if parameter == "":
@@ -436,7 +431,7 @@ class Graph_digitalizer():
         self.preview.config(text="Предпросмотр", relief=tk.RAISED)
 
 
-    def set_status(self, text, color="black"):
+    def set_status(self, text, color="black"):              # Установка статуса (текст подсказки)
         self.status_text.config(text=text, foreground=color)
 
 
@@ -449,5 +444,5 @@ class Graph_digitalizer():
 
 
 if __name__ == "__main__":
-    program = Graph_digitalizer()
+    program = Graph_digitizer()
     program.start()
